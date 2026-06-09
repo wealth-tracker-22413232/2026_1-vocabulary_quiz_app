@@ -5,7 +5,7 @@ import tkinter as tk
 
 from tkinter import ttk, font
 
-from vocabulary_quiz_app.quiz_logic import Word, check_answer, draw_word
+from vocabulary_quiz_app.quiz_logic import Word, check_answer, draw_word,QuizSession
 
 
 class VocabularyQuizApp:
@@ -16,6 +16,7 @@ class VocabularyQuizApp:
         self.checked = False
         self.score = 0
         self.total = 0
+        self.session = QuizSession()
 
         self.default_font = font.nametofont("TkDefaultFont")
         self.default_font.configure(family="NanumGothic", size=12)
@@ -48,6 +49,7 @@ class VocabularyQuizApp:
         self.next_word()
 
     def next_word(self) -> None:
+        self.session.start()
         self.current = draw_word(self.words, self.rng)
         self.word_var.set(self.current.term)
         self.answer_entry.delete(0, tk.END)
@@ -67,5 +69,25 @@ class VocabularyQuizApp:
             self.feedback_var.set("정답입니다!")
         else:
             self.feedback_var.set(f"오답입니다. 정답: {self.current.meaning}")
+            self.session.record_wrong(self.current)
         self.score_var.set(f"Score: {self.score}/{self.total}")
         self.check_button.state(["disabled"])
+
+    def show_final_result(self):
+        self.session.end()
+        result_text = f"테스트 종료!\n점수: {self.score}/{self.total}"
+        
+        if self.session.total_time > 0:
+            minutes = int(self.session.total_time // 60)
+            seconds = int(self.session.total_time % 60)
+            result_text += f"\n총 소요 시간: {minutes}분 {seconds}초"
+        
+        if self.session.wrong_words:
+            result_text += "\n\n틀린 단어 목록:"
+            for word in self.session.wrong_words:
+                result_text += f"\n- {word.term} : {word.meaning}"
+        
+        result_window = tk.Toplevel(self.root)
+        result_window.title("결과")
+        tk.Label(result_window, text=result_text, font=("NanumGothic", 12), justify="left").pack(pady=20, padx=20)
+        tk.Button(result_window, text="닫기", command=result_window.destroy).pack(pady=10)
